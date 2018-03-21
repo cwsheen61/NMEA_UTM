@@ -227,20 +227,18 @@ pointCloudLoop = 0
 running = "|/-\\|/-\\"
 
 
-pcInFileName = sys.argv[1]
+pcInFileName = raw_input('Input the point cloud file name: ')
 inFile = open(pcInFileName,'r')
 
-trajInFileName = sys.argv[2]
+trajInFileName = pcInFileName.replace('pointcloud','trajectory',1)
 trajFile = open(trajInFileName,'r')
 
-gpsInFileName = sys.argv[3]
+gpsInFileName = raw_input('Input the GPS correction file name: ')
 gpsFile = open(gpsInFileName, 'r')
-# 
+
 
 
 strOutFile = pcInFileName.replace('pointcloud_', 'pointcloud_UTM_', 1)
-
-
 
 strTrajFile = trajInFileName.replace('trajectory_', 'trajectory_UTM_', 1)
 
@@ -254,8 +252,6 @@ trajOutFile = open(strTrajFile,'w')
 googOutFile = open(strGoogCSVFile,'w')
 
 googOutFile.write('PointName, Latitude, Longitude\n')
-
-
 
 headerLine1 = inFile.readline()
 headerLine2 = inFile.readline()
