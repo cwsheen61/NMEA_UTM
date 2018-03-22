@@ -275,6 +275,19 @@ while True:
 		pcOutFile.write ('property int UTM_ZONE_Alph\n')
 		pcOutFile.write ('property float Longitude\n')
 		pcOutFile.write ('property float Latitude\n')
+		pcOutFile.write ('property float trajectory_x\n')
+		pcOutFile.write ('property float trajectory_y\n')
+		pcOutFile.write ('property float trajectory_z\n')
+		pcOutFile.write ('property float trajectory_roll\n')
+		pcOutFile.write ('property float trajectory_pitch\n')
+		pcOutFile.write ('property float trajectory_yaw\n')
+		pcOutFile.write ('property float trajectory_time\n')
+		pcOutFile.write ('property float trajectory_Easting\n')
+		pcOutFile.write ('property float trajectory_Northing\n')
+		pcOutFile.write ('property int trajectory_UTM_Zone_num\n')
+		pcOutFile.write ('property int trajectory_UTM_ZONE_Alph\n')
+		pcOutFile.write ('property float trajectory_Longitude\n')
+		pcOutFile.write ('property float trajectory_Latitude\n')
 		pcOutFile.write (headerLine)
 		break
 	else:
@@ -340,7 +353,7 @@ total = 0
 
 skipPoints = 10
 j = skipPoints
-index = 1
+index = 0
 
 while True:
 	trajLine = trajFile.readline()
@@ -406,6 +419,8 @@ sys.stdout.flush()
 
 i = 0
 index = 0
+trTime = -20.0
+
 while True:
 	inLine = inFile.readline()
 	if not inLine:
@@ -457,10 +472,26 @@ while True:
 	elif zAlpha == 'Z': zCode = 26
 	
 	zVal= '%s%s' % (z[0],z[1])
+
+	tr = open(strTrajFile,'r')
+	if trTime != pointTime:
+		while True:
+			trLine = tr.readline()
+			if 'end_header' in trLine: break
+	
+		while True:
+			trLine = tr.readline()
+			if not trLine: break
+			trLine = trLine.strip()
+			inStr = trLine.split()
+			trTime = inStr[6]
+			if trTime >= pointTime: break		
+		
+
 	if hasRange:
-		pcOutFile.write("%f %f %f %f %f %f %f %f %s %d %f %f\n" % (cloudX, cloudY, cloudZ, cloudInt, pointRange, pointTime, e, n, zVal, zCode, cloudLon, cloudLat))
+		pcOutFile.write("%f %f %f %f %f %f %f %f %s %d %f %f %s\n" % (cloudX, cloudY, cloudZ, cloudInt, pointRange, pointTime, e, n, zVal, zCode, cloudLon, cloudLat, trLine))
 	else:
-		pcOutFile.write("%f %f %f %f %f %f %f %s %d %f %f\n" % (cloudX, cloudY, cloudZ, cloudInt, pointTime, e, n, zVal, zCode, cloudLon, cloudLat))	
+		pcOutFile.write("%f %f %f %f %f %f %f %s %d %f %f %s\n" % (cloudX, cloudY, cloudZ, cloudInt, pointTime, e, n, zVal, zCode, cloudLon, cloudLat, trLine))	
 	if float(index/1000000) == float(index)/1000000.0:
 			sys.stdout.write('\rpoints: %d' % index)
 			sys.stdout.flush()
