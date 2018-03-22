@@ -228,14 +228,25 @@ running = "|/-\\|/-\\"
 
 
 pcInFileName = raw_input('Input the point cloud file name: ')
+pcInfileName = pcInFileName.strip()
+pcInFileName = pcInFileName.replace('\'','')
+pcInFileName = pcInFileName.replace(' ','')
+
+print pcInFileName
+
+
+
 inFile = open(pcInFileName,'r')
 
 trajInFileName = pcInFileName.replace('pointcloud','trajectory',1)
 trajFile = open(trajInFileName,'r')
 
 gpsInFileName = raw_input('Input the GPS correction file name: ')
-gpsFile = open(gpsInFileName, 'r')
 
+gpsInfileName = gpsInFileName.strip()
+gpsInFileName = gpsInFileName.replace('\'','')
+gpsInFileName = gpsInFileName.replace(' ','')
+gpsFile = open(gpsInFileName, 'r')
 
 
 strOutFile = pcInFileName.replace('pointcloud_', 'pointcloud_UTM_', 1)
@@ -253,80 +264,54 @@ googOutFile = open(strGoogCSVFile,'w')
 
 googOutFile.write('PointName, Latitude, Longitude\n')
 
-headerLine1 = inFile.readline()
-headerLine2 = inFile.readline()
-headerLine3 = inFile.readline()
-headerLine4 = inFile.readline()
-headerLine5 = inFile.readline()
-headerLine6 = inFile.readline()
-headerLine7 = inFile.readline()
-headerLine8 = inFile.readline()
-headerLine9 = inFile.readline()
-headerLine10 = inFile.readline()
+hasRange = False
 
-pcOutFile.write(headerLine1)
-pcOutFile.write(headerLine2)
-pcOutFile.write(headerLine3)
-pcOutFile.write(headerLine4)
-pcOutFile.write(headerLine5)
-pcOutFile.write(headerLine6)
-pcOutFile.write(headerLine7)
-pcOutFile.write(headerLine8)
-pcOutFile.write(headerLine9)
-pcOutFile.write ('property float Easting\n')
-pcOutFile.write ('property float Northing\n')
-pcOutFile.write ('property int UTM_Zone_num\n')
-pcOutFile.write ('property int UTM_ZONE_Alph\n')
-pcOutFile.write ('property float Longitude\n')
-pcOutFile.write ('property float Latitude\n')
-pcOutFile.write(headerLine10)
+while True:
+	headerLine = inFile.readline()
+	if 'end_header' in headerLine:
+		pcOutFile.write ('property float Easting\n')
+		pcOutFile.write ('property float Northing\n')
+		pcOutFile.write ('property int UTM_Zone_num\n')
+		pcOutFile.write ('property int UTM_ZONE_Alph\n')
+		pcOutFile.write ('property float Longitude\n')
+		pcOutFile.write ('property float Latitude\n')
+		pcOutFile.write (headerLine)
+		break
+	else:
+		pcOutFile.write(headerLine)
+		if 'element' in headerLine:
+			inStr = headerLine.split(' ')
+			numPts = long(inStr[2])
+		if 'point_range' in headerLine:
+			hasRange = True
+			
+		
+
+
 
 # print headerLine1, headerLine2, headerLine3, headerLine9
 
-trajLine1 = trajFile.readline()
-trajLine2 = trajFile.readline()
-trajLine3 = trajFile.readline()
-trajLine4 = trajFile.readline()
-trajLine5 = trajFile.readline()
-trajLine6 = trajFile.readline()
-trajLine7 = trajFile.readline()
-trajLine8 = trajFile.readline()
-trajLine9 = trajFile.readline()
-trajLine10 = trajFile.readline()
-trajLine11 = trajFile.readline()
-trajLine12 = trajFile.readline()
+while True:
+	trajLine = trajFile.readline()
+	if 'end_header' in trajLine:
+		trajOutFile.write ('property float Easting\n')
+		trajOutFile.write ('property float Northing\n')
+		trajOutFile.write ('property int UTM_Zone_num\n')
+		trajOutFile.write ('property int UTM_Zone_Alpha\n')
+		trajOutFile.write ('property float Longitude\n')
+		trajOutFile.write ('property float Latitude\n')
+		trajOutFile.write (trajLine)
+		break
 
-trajOutFile.write (trajLine1)
-trajOutFile.write (trajLine2)
-trajOutFile.write (trajLine3)
-trajOutFile.write (trajLine4)
-trajOutFile.write (trajLine5)
-trajOutFile.write (trajLine6)
-trajOutFile.write (trajLine7)
-trajOutFile.write (trajLine8)
-trajOutFile.write (trajLine9)
-trajOutFile.write (trajLine10)
-trajOutFile.write (trajLine11)
-trajOutFile.write ('property float Easting\n')
-trajOutFile.write ('property float Northing\n')
-trajOutFile.write ('property int UTM_Zone_num\n')
-trajOutFile.write ('property int UTM_Zone_Alpha\n')
-trajOutFile.write ('property float Longitude\n')
-trajOutFile.write ('property float Latitude\n')
-trajOutFile.write (trajLine12)
+	else:
+		trajOutFile.write(trajLine)
+		if 'element' in trajLine:
+			inStr = trajLine.split(' ')
+			trajNumPts = long(inStr[2])
 
+print 'Point cloud points: ', numPts
 
-str1, str2, strNumPts = headerLine4.split(' ',3)
-
-numPts = int(strNumPts)
-
-#print numPts
-
-str1, str2, strTrajNumPts = trajLine4.split(' ',3)
-
-trajNumPts = int(strTrajNumPts)
-
-#print trajNumPts
+print 'Trajectory points: ', trajNumPts
 
 gpsLine1 = gpsFile.readline()
 gpsLine2 = gpsFile.readline()
@@ -347,28 +332,29 @@ zOffset = float(gs[spaces])
 
 print 'xOffset = ', xOffset, ' yOffset = ', yOffset, ' zOffset = ', zOffset
 
-trajArray = [[0.0 for x in range(7)] for y in range(trajNumPts)]
 trajStartIndex = 0
 trajEndIndex = 0
 lastTrajCount = 0
 
 total = 0
 
-skipPoints = 5
+skipPoints = 10
 j = skipPoints
+index = 1
 
-for index in range (trajNumPts+1):
-	trajInLine = trajFile.readline()
-	if trajInLine <> "":
-		strX, strY, strZ, strR, strP, strYaw, strTime = trajInLine.split(' ',7)
-		trajX = float(strX)
-		trajY = float(strY)
-		trajZ = float(strZ)
-		trajRoll = float(strR)
-		trajPitch = float(strP)
-		trajYaw = float(strYaw)
-		trajTime = float(strTime)
-	else: break
+while True:
+	trajLine = trajFile.readline()
+	if  not trajLine:
+		break
+	else:
+		inStr = trajLine.split()
+		trajX = float(inStr[0])
+		trajY = float(inStr[1])
+		trajZ = float(inStr[2])
+		trajRoll = float(inStr[3])
+		trajPitch = float(inStr[4])
+		trajYaw = float(inStr[5])
+		trajTime = float(inStr[6])
 	
 	trajX += xOffset
 	trajY += yOffset
@@ -376,7 +362,8 @@ for index in range (trajNumPts+1):
 	
 	(trajLat, trajLon) = UTMtoLL(23, trajY, trajX, zone)
 	(z, e, n) = LLtoUTM(23, trajLat, trajLon)
-#	print (index)
+	sys.stdout.write('\rIndex: %d' % index)
+	sys.stdout.flush()
 	zAlpha = z[2]
 	if zAlpha == 'A': zCode = 1
 	elif zAlpha == 'B': zCode = 2
@@ -409,20 +396,30 @@ for index in range (trajNumPts+1):
 	if j == skipPoints:
 		googOutFile.write("Point:%d,%12.8f,%12.8f\n" % (index, trajLat, trajLon))
 		j = 0
+		index += 1
 	j += 1
 trajOutFile.close()
 googOutFile.close()
+
+sys.stdout.write('\n')
+sys.stdout.flush()
+
 i = 0
-for index in range(numPts+1):
+index = 0
+while True:
 	inLine = inFile.readline()
-	if inLine == "":
+	if not inLine:
 		break
-	str1, str2, str3, str4, str5 = inLine.split(' ',5)
-	cloudX = float(str1)
-	cloudY = float(str2)
-	cloudZ = float(str3)
-	cloudInt = float(str4)
-	pointTime = float(str5)
+	inStr = inLine.split()
+	cloudX = float(inStr[0])
+	cloudY = float(inStr[1])
+	cloudZ = float(inStr[2])
+	cloudInt = float(inStr[3])
+	if hasRange:
+		pointRange = float(inStr[4])
+		pointTime = float(inStr[5])
+	else:
+		pointTime = float(inStr[4])
 
 	
 	cloudX += xOffset
@@ -460,13 +457,14 @@ for index in range(numPts+1):
 	elif zAlpha == 'Z': zCode = 26
 	
 	zVal= '%s%s' % (z[0],z[1])
-	pcOutFile.write("%f %f %f %f %f %f %f %s %d %f %f\n" % (cloudX, cloudY, cloudZ, cloudInt, pointTime, e, n, zVal, zCode, cloudLon, cloudLat))
-	if float(index/10000) == float(index)/10000.0:
-			sys.stdout.write(' %s\r' % running[i])
+	if hasRange:
+		pcOutFile.write("%f %f %f %f %f %f %f %f %s %d %f %f\n" % (cloudX, cloudY, cloudZ, cloudInt, pointRange, pointTime, e, n, zVal, zCode, cloudLon, cloudLat))
+	else:
+		pcOutFile.write("%f %f %f %f %f %f %f %s %d %f %f\n" % (cloudX, cloudY, cloudZ, cloudInt, pointTime, e, n, zVal, zCode, cloudLon, cloudLat))	
+	if float(index/1000000) == float(index)/1000000.0:
+			sys.stdout.write('\rpoints: %d' % index)
 			sys.stdout.flush()
-			i += 1
-			if i == 8: i = 0
-		
+	index += 1	
 	
 
 
