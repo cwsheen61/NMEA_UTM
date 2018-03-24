@@ -47,7 +47,7 @@ import struct
 #end_header
 
 def _Pack_pcLine(Line):
-	packStr = '<6f3B5f2i11f2i2f'
+	packStr = '<3d3f3B5f2i11f2i2f'
 	s = Line.split()
 	x = float(s[0])
 	y =  float(s[1])
@@ -108,8 +108,7 @@ while True:
 	if 'element' in pcLine:
 		inStr = pcLine.split()
 		pcPoints = long(inStr[2])
-		sys.stdout.write('Point cloud points: %d\n' % pcPoints)
-		sys.stdout.flush()
+
 
 	if 'comment UTM' in pcLine:
 		inStr = pcLine.split()
@@ -131,8 +130,12 @@ while True:
 	if 'grn' in pcLine:
 		hasColor = True
 
+sys.stdout.write('Point cloud points: %d\n' % pcPoints)
+sys.stdout.flush()
+
 xMax = yMax = 0.0
 xMin = yMin = 10000000.0	
+
 index = 0
 
 while True:
@@ -157,8 +160,8 @@ pc.close()
 xRange = xMax - xMin
 yRange = yMax - yMin
 
-xGrids = int(xRange/500)+1
-yGrids = int(yRange/500)+1
+xGrids = int(xRange/500)+2
+yGrids = int(yRange/500)+2
 
 totalGrids = (xGrids * yGrids)
 
@@ -177,9 +180,9 @@ for i in range (xGrids):
 	for j in range(yGrids):
 		xName = xGridMin + int(500*i)
 		yName = yGridMin + int(500*j)
-		fileNameStr = ('/home/realearth/recordings/%s_%dE_%dN.txt' % (UTM, xName, yName))
+		fileNameStr = ('/home/realearth/recordings/%s_%dE_%dN.tmp' % (UTM, xName, yName))
 #		print 'i: ', i, 'j: ', j
-		f[i][j] = open(fileNameStr,'w')
+		f[i][j] = open(fileNameStr,'wb')
 
 pc = open(pcFileName,'r')
 
@@ -202,14 +205,16 @@ while True:
 
 	xBin = int((x - xMin)/500)
 	yBin = int((y - yMin)/500)
+	outputStr = ''
 	for l in range(len(inStr)):
-		f[xBin][yBin].write('%s ' % inStr[l])
+		outputStr += (inStr[l] + ' ')
 		if l == 2:
 			if not hasNormals:
-				f[xBin][yBin].write('0.0 0.0 0.0 ')
+				outputStr += '0.0 0.0 0.0 '
 			if not hasColor:
-				f[xBin][yBin].write('255 255 255 ')
-	f[xBin][yBin].write('\n')
+				outputStr += '255 255 255 '
+	pack_data = _Pack_pcLine(outputStr)
+	f[xBin][yBin].write(pack_data)
 
 
 for i in range (xGrids):
@@ -219,27 +224,32 @@ for i in range (xGrids):
 sys.stdout.write('\n')
 sys.stdout.flush()
 
+struct_fmt = '<3d3f3B5f2i11f2i2f'
+struct_len = struct.calcsize(struct_fmt)
+struct_unpack = struct.Struct(struct_fmt).unpack_from
+
+
 for i in range (xGrids):
 	for j in range(yGrids):
 		xName = xGridMin + int(500*i)
 		yName = yGridMin + int(500*j)
-		fileNameStr = ('/home/realearth/recordings/%s_%dE_%dN.txt' % (UTM, xName, yName))
-		f[i][j] = open(fileNameStr,'r')
+		fileNameStr = ('/home/realearth/recordings/%s_%dE_%dN.tmp' % (UTM, xName, yName))
+		f[i][j] = open(fileNameStr,'rb')
 		index = 0
 		hsh = hashlib.sha512()
 		sys.stdout.write('\rHashing: %s' % fileNameStr)
 		sys.stdout.flush()
 		while True:
-			pcLine = f[i][j].readline()
-			if not pcLine: break
-			pack_data = _Pack_pcLine(pcLine)
+			pack_data = f[i][j].read(struct_len)
+			if not pack_data: break
+#			pack_data = _Pack_pcLine(pcLine)
 			hsh.update(pack_data)
 			index += 1
 		f[i][j].close
 		sys.stdout.write('\nSHA512: %s\n' % hsh.hexdigest())
 		sys.stdout.flush()
 		if index > 0:
-			outFileName = fileNameStr.replace('txt','ply',1)
+			outFileName = fileNameStr.replace('tmp','ply',1)
 			out = open(outFileName,'wb')
 			for k in range (len(pHeader)):
 				if 'element' in pHeader[k]:
@@ -248,8 +258,12 @@ for i in range (xGrids):
 					out.write('format binary_little_endian 1.0\n')
 				elif 'double time' in pHeader[k]:
 					out.write('property float time\n')
+				elif 'property float x' in pHeader[k]:
+					out.write('property double x\n')
+				elif 'property float y' in pHeader[k]:
+					out.write('property double y\n')
 				elif 'property float z' in pHeader[k]:
-					out.write(pHeader[k])
+					out.write('property double z\n')
 					if not hasNormals:
 						out.write('property float Nx\n')
  						out.write('property float Ny\n')
@@ -263,13 +277,12 @@ for i in range (xGrids):
 					out.write(pHeader[k])
 				else: out.write(pHeader[k])
 #			exit ()
-			f[i][j] = open(fileNameStr,'r')
+			f[i][j] = open(fileNameStr,'rb')
 			pIndex = 0
 			sys.stdout.write('\n')
 			while True:
-				pcLine = f[i][j].readline()
-				if not pcLine: break
-				pack_data = _Pack_pcLine(pcLine)
+				pack_data = f[i][j].read(struct_len)
+				if not pack_data: break
 				pIndex += 1
 				if float(pIndex/100000) == float(pIndex)/100000.0:
 					sys.stdout.write('\rIndex: %d' % pIndex)
